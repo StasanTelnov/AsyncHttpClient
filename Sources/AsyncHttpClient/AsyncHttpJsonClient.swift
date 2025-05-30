@@ -21,8 +21,10 @@ private extension URLError {
     static let invalidResponse = URLError(.badServerResponse)
 }
 
-private extension String {
+extension String {
     static let jsonMimeType = "application/json"
+    static let multipartMimeType = "multipart/form-data"
+    static let octeatStreamMimeType = "application/octet-stream"
     static let post = "POST"
     static let put = "PUT"
     static let delete = "DELETE"
@@ -135,13 +137,15 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
     public func post<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners]
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
+        progress: AsyncProgressDelegate? = nil
     ) async throws -> Target {
         try await perform(
             method: .post,
             url: url,
             body: body,
-            tuners: tuners
+            tuners: tuners,
+            progress: progress
         )
     }
 
@@ -149,13 +153,15 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
     public func put<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners]
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
+        progress: AsyncProgressDelegate? = nil
     ) async throws -> Target {
         try await perform(
             method: .put,
             url: url,
             body: body,
-            tuners: tuners
+            tuners: tuners,
+            progress: progress
         )
     }
 
@@ -215,7 +221,8 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
         method: String,
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners]
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
+        progress: AsyncProgressDelegate? = nil
     ) async throws -> Target {
         guard url.scheme != nil || url.baseURL?.scheme != nil else {
             throw URLError.invalidUrl
@@ -226,14 +233,27 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
         if case .request(let requestTuner)? = tuners[.request] {
             requestTuner(&request)
         }
+        
+        if let multipart = body as? AsyncMultipartFormData {
+            request.httpMethod = method
+            request.setValue(multipart.contentType, forHTTPHeaderField: .contentType)
+            // pass through any response/decoder tuners, etc.
+            let (data, response) = try await session.asyncUpload(
+                for: request,
+                from: multipart.body
+            ) {
+                progress?($0)
+            }
+            return try handle(data: data, response: response, tuners: tuners)
+        }
 
         var encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-
+        
         if case .encoder(let encoderTuner)? = tuners[.encoder] {
             encoderTuner(&encoder)
         }
-
+        
         let httpBody = try encoder.encode(body)
         request.setValue(.jsonMimeType, forHTTPHeaderField: .contentType)
         request.httpMethod = method
