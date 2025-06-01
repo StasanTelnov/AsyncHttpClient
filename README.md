@@ -21,6 +21,10 @@ struct Warehouse: Codable {
     let title: String
 }
 
+struct UploadStatus: Codable {
+    let status: String
+}
+
 let httpClient: AsyncHttpClient = AsyncHttpJSONClient()
 
 func fetchWarehouses() async throws -> [Warehouse] {
@@ -30,5 +34,17 @@ func fetchWarehouses() async throws -> [Warehouse] {
 func update(warehouse: Warehouse) async throws {
     try await httpClient.post(url: URL(string: "https://my_sweet_url.com/warehouse"), body: warehouse)
 }
+
+func uploadFiles(filesUrls: [URL], metadata: Warehouse) async throws -> UploadStatus {
+    try await httpClient.post(
+        url: URL(string: "https://my_sweet_url.com/upload_warehouse")!,
+        body: AsyncFileUpload(filesUrls: filesUrls, params: ["metadata": metadata]),
+        tuners: [:],
+        progress: {
+            print("Progress of upload is \($0)")
+        }
+    )
+}
+
 
 ```

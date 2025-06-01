@@ -27,8 +27,7 @@ public enum AsyncHttpRequestTuners {
 
 /// Асинхронный HTTP клиент
 public protocol AsyncHttpClient {
-    
-    typealias AsyncProgressDelegate = (Double) -> Void
+    typealias AsyncProgressDelegate = @Sendable (Double) -> Void
 
     var session: URLSession { get }
 

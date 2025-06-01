@@ -9,6 +9,9 @@ public protocol AsyncMultipartFormData: Encodable {
     var contentType: String { get }
 }
 
+// MARK: - UploadFileInfo
+
+/// Формирует набор свойств отправляемого файла
 private struct UploadFileInfo {
     let data: Data
     let name: String
@@ -33,40 +36,10 @@ private struct UploadFileInfo {
         self.data = fileData
         self.name = fileURL.deletingPathExtension().lastPathComponent
         self.filename = fileURL.lastPathComponent
-        self.mimeType = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType ?? .octeatStreamMimeType
-    }
-}
-
-// MARK: - Private extensions
-
-//private extension String {
-//    static let multipartMimeType = "multipart/form-data"
-//    static let octeatStreamMimeType = "application/octet-stream"
-//}
-
-// MARK: - Inner extensions
-
-extension URLSession {
-    func asyncUpload(
-        for request: URLRequest,
-        from body: Data,
-        progressHandler: @escaping (Double) -> Void
-    ) async throws -> (Data, URLResponse) {
-        let delegate = UploadDelegate(body: body, progress: progressHandler)
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-        return try await withCheckedThrowingContinuation { cont in
-            let task = session.uploadTask(with: request, from: body) { data, resp, err in
-                if let err = err {
-                    cont.resume(throwing: err); return
-                }
-                guard let data = data,
-                      let resp = resp else {
-                    cont.resume(throwing: URLError(.badServerResponse))
-                    return
-                }
-                cont.resume(returning: (data, resp))
-            }
-            task.resume()
+        if #available(iOS 14.0, *) {
+            self.mimeType = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType ?? .octeatStreamMimeType
+        } else {
+            self.mimeType = .octeatStreamMimeType
         }
     }
 }
@@ -74,9 +47,17 @@ extension URLSession {
 // MARK: - AsyncFileUpload
 
 public struct AsyncFileUpload: AsyncMultipartFormData {
+    
+    // MARK: - Private properties
+    
     private let boundary = "Boundary-\(UUID().uuidString)"
+    
+    // MARK: - Inner properties
+    
     let filesUrls: [URL]
     var params: [String: Codable]? = nil
+    
+    // MARK: - Сomputed properties
     
     public var contentType: String {
         "\(String.multipartMimeType); boundary=\(boundary)"
@@ -121,6 +102,13 @@ public struct AsyncFileUpload: AsyncMultipartFormData {
         return data
     }
     
+    // MARK: - Life cicle
+    
+    public init(filesUrls: [URL], params: [String : Codable]? = nil) {
+        self.filesUrls = filesUrls
+        self.params = params
+    }
+    
     public func encode(to encoder: any Encoder) throws {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -135,16 +123,12 @@ public struct AsyncFileUpload: AsyncMultipartFormData {
     }
 }
 
-// MARK: - Private delegate
+// MARK: - UploadDelegate
 
-private class UploadDelegate: NSObject, URLSessionTaskDelegate {
-    typealias ProgressClosure = (Double) -> Void
+final class UploadDelegate: NSObject, URLSessionTaskDelegate {
+    let progress: URLSession.ProgressClosure
     
-    let body: Data
-    let progress: ProgressClosure
-    
-    init(body: Data, progress: @escaping ProgressClosure) {
-        self.body = body
+    init(progress: @escaping URLSession.ProgressClosure) {
         self.progress = progress
     }
     

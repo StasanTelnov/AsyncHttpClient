@@ -15,23 +15,6 @@ public protocol AsyncHttpResponseValidator {
 
 // MARK: - Private extensions
 
-private extension URLError {
-    static let invalidUrl = URLError(.badURL)
-    static let emptyResponse = URLError(URLError.Code(rawValue: 204))
-    static let invalidResponse = URLError(.badServerResponse)
-}
-
-extension String {
-    static let jsonMimeType = "application/json"
-    static let multipartMimeType = "multipart/form-data"
-    static let octeatStreamMimeType = "application/octet-stream"
-    static let post = "POST"
-    static let put = "PUT"
-    static let delete = "DELETE"
-    static let patch = "PATCH"
-    static let contentType = "Content-Type"
-}
-
 private extension AnyHashable {
     static let accept = "Accept"
 }
@@ -46,26 +29,6 @@ private extension Dictionary where Key == String {
     var urlQueryItems: [URLQueryItem] {
         map { .init(name: $0, value: String(describing: $1)) }
         .sorted { $0.name < $1.name }
-    }
-}
-
-private extension URLSession {
-    func asyncData(for request: URLRequest) async throws -> (Data, URLResponse) {
-        if #available(iOS 15.0, *) {
-            return try await data(for: request)
-        } else {
-            return try await withCheckedThrowingContinuation { continuation in
-                let task = self.dataTask(with: request) { data, response, error in
-                    guard let data, let response else {
-                        let error = error ?? URLError.invalidResponse
-                        return continuation.resume(throwing: error)
-                    }
-
-                    continuation.resume(returning: (data, response))
-                }
-                task.resume()
-            }
-        }
     }
 }
 
@@ -237,12 +200,12 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
         if let multipart = body as? AsyncMultipartFormData {
             request.httpMethod = method
             request.setValue(multipart.contentType, forHTTPHeaderField: .contentType)
-            // pass through any response/decoder tuners, etc.
+            
             let (data, response) = try await session.asyncUpload(
                 for: request,
-                from: multipart.body
-            ) {
-                progress?($0)
+                with: multipart.body
+            ) { value in
+                progress?(value)
             }
             return try handle(data: data, response: response, tuners: tuners)
         }
