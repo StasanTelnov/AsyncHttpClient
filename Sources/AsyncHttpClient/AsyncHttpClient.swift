@@ -43,16 +43,16 @@ public protocol AsyncHttpClient {
     func post<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
-        progress: AsyncProgressDelegate?
+        progress: AsyncProgressDelegate?,
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners]
     ) async throws -> Target
 
     /// PUT HTTP method
     func put<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
-        progress: AsyncProgressDelegate?
+        progress: AsyncProgressDelegate?,
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners]
     ) async throws -> Target
 
     /// DELETE HTTP method
@@ -100,7 +100,7 @@ public extension AsyncHttpClient {
         url: URL,
         body: Body = AsyncHttpClientEmpty()
     ) async throws -> Target {
-        try await post(url: url, body: body, tuners: [:], progress: nil)
+        try await post(url: url, body: body)
     }
 
     func post<Body: Encodable>(
@@ -108,22 +108,15 @@ public extension AsyncHttpClient {
         body: Body = AsyncHttpClientEmpty()
     ) async throws {
         try await emptyResponseCall {
-            let _: AsyncHttpClientEmpty = try await post(url: url, body: body, tuners: [:], progress: nil)
+            let _: AsyncHttpClientEmpty = try await post(url: url, body: body)
         }
-    }
-    
-    func upload<Body: Encodable, Target: Decodable>(
-        url: URL,
-        body: Body = AsyncHttpClientEmpty()
-    ) async throws -> Target {
-        try await post(url: url, body: body, tuners: [:], progress: nil)
     }
 
     func put<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body = AsyncHttpClientEmpty()
     ) async throws -> Target {
-        try await put(url: url, body: body, tuners: [:], progress: nil)
+        try await put(url: url, body: body)
     }
 
     func put<Body: Encodable> (
@@ -131,7 +124,7 @@ public extension AsyncHttpClient {
         body: Body = AsyncHttpClientEmpty()
     ) async throws {
         try await emptyResponseCall {
-            let _: AsyncHttpClientEmpty = try await put(url: url, body: body, tuners: [:], progress: nil)
+            let _: AsyncHttpClientEmpty = try await put(url: url, body: body)
         }
     }
 

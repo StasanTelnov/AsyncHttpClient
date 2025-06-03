@@ -100,15 +100,15 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
     public func post<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
-        progress: AsyncProgressDelegate? = nil
+        progress: AsyncProgressDelegate? = nil,
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners] = [:]
     ) async throws -> Target {
         try await perform(
             method: .post,
             url: url,
             body: body,
-            tuners: tuners,
-            progress: progress
+            progress: progress,
+            tuners: tuners
         )
     }
 
@@ -116,15 +116,15 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
     public func put<Body: Encodable, Target: Decodable>(
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
-        progress: AsyncProgressDelegate? = nil
+        progress: AsyncProgressDelegate? = nil,
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners] = [:]
     ) async throws -> Target {
         try await perform(
             method: .put,
             url: url,
             body: body,
-            tuners: tuners,
-            progress: progress
+            progress: progress,
+            tuners: tuners
         )
     }
 
@@ -184,8 +184,8 @@ public class AsyncHttpJsonClient: AsyncHttpClient {
         method: String,
         url: URL,
         body: Body,
-        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners],
-        progress: AsyncProgressDelegate? = nil
+        progress: AsyncProgressDelegate? = nil,
+        tuners: [AsyncHttpRequestTuners.Keys: AsyncHttpRequestTuners] = [:]
     ) async throws -> Target {
         guard url.scheme != nil || url.baseURL?.scheme != nil else {
             throw URLError.invalidUrl
